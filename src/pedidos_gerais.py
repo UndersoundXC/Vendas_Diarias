@@ -79,7 +79,7 @@ def coletar_pedidos(data_inicio_utc, data_fim_utc):
             url_detalhe = f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders/{order_id}"
 
             pedido = None
-            for tentativa in range(3):
+            for _ in range(3):
                 try:
                     r_det = requests.get(url_detalhe, headers=headers, timeout=30)
                     if r_det.status_code == 200:
@@ -88,10 +88,7 @@ def coletar_pedidos(data_inicio_utc, data_fim_utc):
                 except requests.exceptions.RequestException:
                     time.sleep(2)
 
-            if not pedido:
-                continue
-
-            if pedido.get("status") == "canceled":
+            if not pedido or pedido.get("status") == "canceled":
                 continue
 
             # Marketing / UTM
@@ -99,9 +96,6 @@ def coletar_pedidos(data_inicio_utc, data_fim_utc):
             pedido["utmSource"] = marketing_data.get("utmSource")
             pedido["utmMedium"] = marketing_data.get("utmMedium")
             pedido["utmCampaign"] = marketing_data.get("utmCampaign")
-
-            # Totals
-            pedido.update(extrair_valores_lista(pedido, "totals", prefixo="totals"))
 
             # Seller principal
             sellers = pedido.get("sellers", [])
@@ -140,6 +134,22 @@ def main():
 
     if todos_pedidos:
         df = pd.json_normalize(todos_pedidos, sep="_")
+
+        # 🔽 COLUNAS USADAS NO RELATÓRIO
+        colunas_relatorio = [
+            "value",
+            "creationDate",
+            "orderId",
+            "sellerName",
+            "statusDescription",
+            "utmSource",
+            "utmMedium",
+            "utmCampaign",
+            "data_extracao"
+        ]
+
+        df = df[colunas_relatorio]
+
         df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
         print(f"✅ CSV gerado: {OUTPUT_PATH} ({len(df)} linhas)")
     else:
