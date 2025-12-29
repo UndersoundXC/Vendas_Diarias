@@ -24,10 +24,10 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Rodar script Itens VTEX
-        run: python src/csv-pedidos_itens.py
+        run: python src/pedidos_itens.py
 
       - name: Rodar script Geral VTEX
-        run: python src/csv-pedidos_gerais.py
+        run: python src/pedidos_gerais.py
 
       - name: Commit CSV
         run: |
