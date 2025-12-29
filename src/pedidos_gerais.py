@@ -97,7 +97,14 @@ def coletar_pedidos(data_inicio, data_fim):
             sellers = pedido.get("sellers", [])
             pedido["sellerName"] = sellers[0].get("name") if sellers else None
 
-            pedido["data_extracao"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            from datetime import timezone, timedelta
+
+            pedido["data_extracao"] = (
+                datetime.now(timezone.utc)
+                .astimezone(timezone(timedelta(hours=-3)))
+                .strftime("%Y-%m-%d %H:%M:%S")
+            )
+
 
             pedidos.append(pedido)
             pedidos_validos_pagina.append(pedido)
