@@ -1,33 +1,32 @@
-name: atualizar csv pedidos
+name: Atualizar CSV Pedidos
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "0 */2 * * *"   # executa a cada 2 horas (UTC)
-  workflow_dispatch:        # permite rodar manualmente
+    - cron: '0 */2 * * *'
 
 jobs:
-  run-script:
+  atualizar:
     runs-on: ubuntu-latest
 
     steps:
-      - name: checkout do repositório
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: configurar python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: instalar dependências
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: rodar script python
+      - name: Run script
         run: python src/csv_pedidos_geral.py
 
-      - name: commit csv atualizado
+      - name: Commit CSV
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add output/pedidos_geral.csv
-          git commit -m "atualiza pedidos.csv automaticamente" || echo "sem alterações"
+          git add output/pedidos.csv
+          git commit -m "Atualiza pedidos.csv" || echo "Sem alterações"
           git push
