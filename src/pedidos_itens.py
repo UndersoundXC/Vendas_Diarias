@@ -22,7 +22,7 @@ headers = {
 # ========== GERAR INTERVALO DE DATAS ==========
 def gerar_intervalo():
     agora = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3)))
-    inicio = (agora - timedelta(days=4)).replace(hour=0, minute=0, second=0, microsecond=0)
+    inicio = (agora - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     fim = agora.replace(hour=23, minute=59, second=59, microsecond=0)
     return inicio, fim
 
