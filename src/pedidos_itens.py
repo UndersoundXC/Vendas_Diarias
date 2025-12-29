@@ -11,6 +11,9 @@ ENV = "vtexcommercestable"
 APP_KEY = os.getenv("VTEX_APP_KEY")
 APP_TOKEN = os.getenv("VTEX_APP_TOKEN")
 
+if not APP_KEY or not APP_TOKEN:
+    raise RuntimeError("VTEX_APP_KEY ou VTEX_APP_TOKEN não definidos")
+
 OUTPUT_PATH = "output/pedidos_itens.csv"
 
 headers = {
@@ -19,11 +22,21 @@ headers = {
     "Content-Type": "application/json"
 }
 
+# ========== FUNÇÃO DE HORÁRIO BRASIL ==========
+def agora_brasil():
+    return datetime.now(timezone.utc).astimezone(
+        timezone(timedelta(hours=-3))
+    )
+
 # ========== GERAR INTERVALO DE DATAS ==========
 def gerar_intervalo():
-    agora = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3)))
-    inicio = (agora - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    fim = agora.replace(hour=23, minute=59, second=59, microsecond=0)
+    agora = agora_brasil()
+    inicio = (agora - timedelta(days=4)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    fim = agora.replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
     return inicio, fim
 
 # ========== COLETA DE ITENS ==========
@@ -74,11 +87,7 @@ def coletar_itens():
 
             for item in pedido.get("items", []):
                 item["orderId"] = order_id
-                pedido["data_extracao"] = (
-                datetime.now(timezone.utc)
-                .astimezone(timezone(timedelta(hours=-3)))
-                .strftime("%Y-%m-%d %H:%M:%S")
-            )
+                item["data_extracao"] = agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
                 itens.append(item)
 
         pagina += 1
@@ -92,12 +101,11 @@ def main():
 
     dados = coletar_itens()
 
-    if dados:
-        df = pd.json_normalize(dados, sep="_")
-        df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
-        print(f"✅ CSV de itens gerado: {OUTPUT_PATH} ({len(df)} linhas)")
-    else:
-        print("⚠️ Nenhum item encontrado.")
+    # Sempre gera o CSV (mesmo vazio)
+    df = pd.json_normalize(dados, sep="_")
+    df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
+
+    print(f"CSV de itens gerado: {OUTPUT_PATH} ({len(df)} linhas)")
 
 if __name__ == "__main__":
     main()
