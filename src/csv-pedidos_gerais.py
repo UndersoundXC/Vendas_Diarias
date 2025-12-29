@@ -125,8 +125,12 @@ def main():
 
     if todos_pedidos:
         df = pd.json_normalize(todos_pedidos, sep="_")
+        
+        os.makedirs("output", exist_ok=True)
         df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
-        print(f"✅ CSV gerado: {OUTPUT_PATH} ({len(df)} linhas)")
+
+        print(f"CSV gerado: {OUTPUT_PATH} ({len(df)} linhas)")
+
     else:
         print("⚠️ Nenhum pedido encontrado.")
 
