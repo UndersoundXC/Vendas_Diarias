@@ -74,7 +74,11 @@ def coletar_itens():
 
             for item in pedido.get("items", []):
                 item["orderId"] = order_id
-                item["data_extracao"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                pedido["data_extracao"] = (
+                datetime.now(timezone.utc)
+                .astimezone(timezone(timedelta(hours=-3)))
+                .strftime("%Y-%m-%d %H:%M:%S")
+            )
                 itens.append(item)
 
         pagina += 1
