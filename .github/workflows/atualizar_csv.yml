@@ -1,5 +1,8 @@
 name: Atualizar CSV Pedidos
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   schedule:
