@@ -12,14 +12,13 @@ jobs:
   atualizar:
     runs-on: ubuntu-latest
 
+    env:
+      VTEX_ACCOUNT_NAME: ${{ secrets.VTEX_ACCOUNT_NAME }}
+      VTEX_APP_KEY: ${{ secrets.VTEX_APP_KEY }}
+      VTEX_APP_TOKEN: ${{ secrets.VTEX_APP_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Debug leitura dos secrets
-        run: |
-          echo "VTEX_ACCOUNT_NAME = '$VTEX_ACCOUNT_NAME'"
-          echo "VTEX_APP_KEY length = ${#VTEX_APP_KEY}"
-          echo "VTEX_APP_TOKEN length = ${#VTEX_APP_TOKEN}"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -39,6 +38,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add output/*.csv
+          git add -f output/*.csv
           git commit -m "Atualiza CSVs VTEX" || echo "Sem alterações"
           git push
