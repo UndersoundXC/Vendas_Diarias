@@ -24,15 +24,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Rodar script Itens VTEX
-        run: python src/pedidos_itens.py
+        run: python src/csv-pedidos_itens.py
 
       - name: Rodar script Geral VTEX
-        run: python src/pedidos_gerais.py
+        run: python src/csv-pedidos_gerais.py
 
       - name: Commit CSV
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add output/pedidos.csv
-          git commit -m "Atualiza pedidos.csv" || echo "Sem alterações"
+          git add output/*.csv
+          git commit -m "Atualiza CSVs VTEX" || echo "Sem alterações"
           git push
