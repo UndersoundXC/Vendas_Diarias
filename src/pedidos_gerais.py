@@ -19,12 +19,22 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# ========== GERAR INTERVALO DE DATAS ==========
+# ========== FUSO HORÁRIO ==========
+TZ_BR = timezone(timedelta(hours=-3))
+
+# ========== GERAR INTERVALO DE DATAS (BRASÍLIA) ==========
 def gerar_intervalo():
-    agora = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3)))
-    inicio = (agora - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    fim = agora.replace(hour=23, minute=59, second=59, microsecond=0)
-    return [(inicio, fim)]
+    agora_br = datetime.now(TZ_BR)
+
+    inicio_br = (agora_br - timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+    fim_br = inicio_br.replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
+
+    return [(inicio_br, fim_br)]
 
 # ========== EXTRAI CAMPOS DE LISTAS ==========
 def extrair_valores_lista(dados, coluna, chave_id='id', chave_valor='value', prefixo=None):
@@ -36,14 +46,14 @@ def extrair_valores_lista(dados, coluna, chave_id='id', chave_valor='value', pre
     return valores
 
 # ========== COLETA DE PEDIDOS ==========
-def coletar_pedidos(data_inicio, data_fim):
+def coletar_pedidos(data_inicio_utc, data_fim_utc):
     pedidos = []
     pagina = 1
 
     while True:
         url = (
             f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders?"
-            f"f_creationDate=creationDate:[{data_inicio} TO {data_fim}]"
+            f"f_creationDate=creationDate:[{data_inicio_utc} TO {data_fim_utc}]"
             f"&per_page=50&page={pagina}"
         )
 
@@ -97,14 +107,10 @@ def coletar_pedidos(data_inicio, data_fim):
             sellers = pedido.get("sellers", [])
             pedido["sellerName"] = sellers[0].get("name") if sellers else None
 
-            from datetime import timezone, timedelta
-
-            pedido["data_extracao"] = (
-                datetime.now(timezone.utc)
-                .astimezone(timezone(timedelta(hours=-3)))
-                .strftime("%Y-%m-%d %H:%M:%S")
+            # Data de extração em Brasília
+            pedido["data_extracao"] = datetime.now(TZ_BR).strftime(
+                "%Y-%m-%d %H:%M:%S"
             )
-
 
             pedidos.append(pedido)
             pedidos_validos_pagina.append(pedido)
@@ -125,10 +131,12 @@ def main():
     intervalos = gerar_intervalo()
     todos_pedidos = []
 
-    for inicio, fim in intervalos:
-        i_utc = inicio.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        f_utc = fim.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        todos_pedidos.extend(coletar_pedidos(i_utc, f_utc))
+    for inicio_br, fim_br in intervalos:
+        inicio_utc = inicio_br.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        fim_utc = fim_br.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        print(f"🔎 Coletando pedidos de {inicio_br} até {fim_br} (Brasília)")
+        todos_pedidos.extend(coletar_pedidos(inicio_utc, fim_utc))
 
     if todos_pedidos:
         df = pd.json_normalize(todos_pedidos, sep="_")
