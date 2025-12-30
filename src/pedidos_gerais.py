@@ -30,7 +30,7 @@ def gerar_intervalo():
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    fim_br = inicio_br.replace(
+    fim_br = agora_br.replace(
         hour=23, minute=59, second=59, microsecond=0
     )
 
