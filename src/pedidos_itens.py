@@ -110,9 +110,16 @@ def coletar_itens():
             creation_date_br = converter_brasil(pedido.get("creationDate"))
 
             for item in pedido.get("items", []):
+                # -------- CATEGORIAS (LISTA → TEXTO) --------
+                categorias = item.get("additionalInfo", {}).get("categories", [])
+                categorias_nome = " | ".join(
+                    c.get("name") for c in categorias if isinstance(c, dict)
+                ) if categorias else None
+
                 registros.append({
                     "creationDate": creation_date_br,
                     "orderId": order_id,
+                    "categoryName": categorias_nome,
                     "name": item.get("name"),
                     "price": item.get("price"),
                     "listPrice": item.get("listPrice"),
@@ -122,7 +129,7 @@ def coletar_itens():
                     "data_extracao": agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
-        # 🔐 mesma trava usada no script pedidos_gerais
+        # 🔐 mesma trava do script pedidos_gerais
         if not pedidos_validos_pagina:
             print(f"✅ Nenhum pedido válido na página {pagina} — encerrando.")
             break
@@ -142,6 +149,7 @@ def main():
     colunas_finais = [
         "creationDate",
         "orderId",
+        "categoryName",
         "name",
         "price",
         "listPrice",
