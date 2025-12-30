@@ -23,18 +23,19 @@ headers = {
     "Content-Type": "application/json"
 }
 
+# ========== FUSO BRASIL ==========
+TZ_BR = timezone(timedelta(hours=-3))
+
 # ========== FUNÇÕES DE DATA ==========
 def agora_brasil():
-    return datetime.now(timezone.utc).astimezone(
-        timezone(timedelta(hours=-3))
-    )
+    return datetime.now(TZ_BR)
 
 def converter_brasil(data_iso):
     if not data_iso:
         return None
     return (
         datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
-        .astimezone(timezone(timedelta(hours=-3)))
+        .astimezone(TZ_BR)
         .strftime("%Y-%m-%d %H:%M:%S")
     )
 
@@ -54,14 +55,16 @@ def coletar_itens():
     pagina = 1
     order_ids_processados = set()
 
-    inicio, fim = gerar_intervalo()
-    i_utc = inicio.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    f_utc = fim.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    inicio_br, fim_br = gerar_intervalo()
+    inicio_utc = inicio_br.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    fim_utc = fim_br.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    print(f"🔎 Coletando itens de {inicio_br} até {fim_br} (Brasília)")
 
     while True:
         url = (
             f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders?"
-            f"f_creationDate=creationDate:[{i_utc} TO {f_utc}]"
+            f"f_creationDate=creationDate:[{inicio_utc} TO {fim_utc}]"
             f"&per_page={PER_PAGE}&page={pagina}"
         )
 
@@ -75,19 +78,16 @@ def coletar_itens():
             print(f"✅ Página {pagina} vazia — encerrando.")
             break
 
-        novos_na_pagina = 0
+        pedidos_validos_pagina = []
 
         for resumo in tqdm(pedidos, desc=f"Página {pagina}"):
             order_id = resumo.get("orderId")
             if not order_id:
                 continue
 
-            # 🔐 TRAVA DEFINITIVA (VTEX REPETE PEDIDOS)
+            # 🔐 evita reprocessamento
             if order_id in order_ids_processados:
                 continue
-
-            order_ids_processados.add(order_id)
-            novos_na_pagina += 1
 
             url_det = f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders/{order_id}"
 
@@ -101,8 +101,11 @@ def coletar_itens():
                 except requests.exceptions.RequestException:
                     time.sleep(2)
 
-            if not pedido:
+            if not pedido or not pedido.get("items"):
                 continue
+
+            order_ids_processados.add(order_id)
+            pedidos_validos_pagina.append(order_id)
 
             creation_date_br = converter_brasil(pedido.get("creationDate"))
 
@@ -110,7 +113,6 @@ def coletar_itens():
                 registros.append({
                     "creationDate": creation_date_br,
                     "orderId": order_id,
-                    "additionalInfo_categories": item.get("additionalInfo", {}).get("categories"),
                     "name": item.get("name"),
                     "price": item.get("price"),
                     "listPrice": item.get("listPrice"),
@@ -120,9 +122,9 @@ def coletar_itens():
                     "data_extracao": agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
-        # 🚨 SE NÃO VEIO NENHUM PEDIDO NOVO → PARA
-        if novos_na_pagina == 0:
-            print(f"✅ Nenhum pedido novo na página {pagina}. Encerrando.")
+        # 🔐 mesma trava usada no script pedidos_gerais
+        if not pedidos_validos_pagina:
+            print(f"✅ Nenhum pedido válido na página {pagina} — encerrando.")
             break
 
         pagina += 1
@@ -140,7 +142,6 @@ def main():
     colunas_finais = [
         "creationDate",
         "orderId",
-        "additionalInfo_categories",
         "name",
         "price",
         "listPrice",
