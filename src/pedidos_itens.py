@@ -15,6 +15,7 @@ if not APP_KEY or not APP_TOKEN:
     raise RuntimeError("VTEX_APP_KEY ou VTEX_APP_TOKEN não definidos")
 
 OUTPUT_PATH = "output/pedidos_itens.csv"
+PER_PAGE = 50
 
 headers = {
     "X-VTEX-API-AppKey": APP_KEY,
@@ -60,7 +61,7 @@ def coletar_itens():
         url = (
             f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders?"
             f"f_creationDate=creationDate:[{i_utc} TO {f_utc}]"
-            f"&per_page=50&page={pagina}"
+            f"&per_page={PER_PAGE}&page={pagina}"
         )
 
         r = requests.get(url, headers=headers, timeout=30)
@@ -69,7 +70,9 @@ def coletar_itens():
             break
 
         pedidos = r.json().get("list", [])
-        if not pedidos:
+        qtd = len(pedidos)
+
+        if qtd == 0:
             print(f"✅ Página {pagina} vazia — encerrando.")
             break
 
@@ -109,8 +112,13 @@ def coletar_itens():
                     "data_extracao": agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
+        # 🔐 REGRA DE PARADA REAL
+        if qtd < PER_PAGE:
+            print(f"✅ Última página atingida ({qtd} registros).")
+            break
+
         pagina += 1
-        time.sleep(0.3)
+        time.sleep(0.4)
 
     return registros
 
@@ -119,7 +127,6 @@ def main():
     os.makedirs("output", exist_ok=True)
 
     dados = coletar_itens()
-
     df = pd.DataFrame(dados)
 
     colunas_finais = [
@@ -136,7 +143,6 @@ def main():
     ]
 
     df = df[colunas_finais] if not df.empty else pd.DataFrame(columns=colunas_finais)
-
     df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
 
     print(f"✅ CSV de itens gerado: {OUTPUT_PATH} ({len(df)} linhas)")
