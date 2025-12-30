@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 import os
 
-# ========== CONFIGURAÇÕES (ENV) ==========
+# ========== CONFIGURAÇÕES ==========
 ACCOUNT = os.getenv("VTEX_ACCOUNT_NAME", "senffnet")
 ENV = "vtexcommercestable"
 APP_KEY = os.getenv("VTEX_APP_KEY")
@@ -22,13 +22,21 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# ========== FUNÇÃO DE HORÁRIO BRASIL ==========
+# ========== FUNÇÕES DE DATA ==========
 def agora_brasil():
     return datetime.now(timezone.utc).astimezone(
         timezone(timedelta(hours=-3))
     )
 
-# ========== GERAR INTERVALO DE DATAS ==========
+def converter_brasil(data_iso):
+    if not data_iso:
+        return None
+    return (
+        datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
+        .astimezone(timezone(timedelta(hours=-3)))
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
+
 def gerar_intervalo():
     agora = agora_brasil()
     inicio = (agora - timedelta(days=4)).replace(
@@ -41,7 +49,7 @@ def gerar_intervalo():
 
 # ========== COLETA DE ITENS ==========
 def coletar_itens():
-    itens = []
+    registros = []
     pagina = 1
 
     inicio, fim = gerar_intervalo()
@@ -73,7 +81,7 @@ def coletar_itens():
             url_det = f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders/{order_id}"
 
             pedido = None
-            for tentativa in range(3):
+            for _ in range(3):
                 try:
                     r_det = requests.get(url_det, headers=headers, timeout=30)
                     if r_det.status_code == 200:
@@ -85,15 +93,26 @@ def coletar_itens():
             if not pedido:
                 continue
 
+            creation_date_br = converter_brasil(pedido.get("creationDate"))
+
             for item in pedido.get("items", []):
-                item["orderId"] = order_id
-                item["data_extracao"] = agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
-                itens.append(item)
+                registros.append({
+                    "creationDate": creation_date_br,
+                    "orderId": order_id,
+                    "additionalInfo_categories": item.get("additionalInfo", {}).get("categories"),
+                    "name": item.get("name"),
+                    "price": item.get("price"),
+                    "listPrice": item.get("listPrice"),
+                    "quantity": item.get("quantity"),
+                    "productId": item.get("productId"),
+                    "seller": item.get("seller"),
+                    "data_extracao": agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
+                })
 
         pagina += 1
         time.sleep(0.3)
 
-    return itens
+    return registros
 
 # ========== MAIN ==========
 def main():
@@ -101,11 +120,26 @@ def main():
 
     dados = coletar_itens()
 
-    # Sempre gera o CSV (mesmo vazio)
-    df = pd.json_normalize(dados, sep="_")
+    df = pd.DataFrame(dados)
+
+    colunas_finais = [
+        "creationDate",
+        "orderId",
+        "additionalInfo_categories",
+        "name",
+        "price",
+        "listPrice",
+        "quantity",
+        "productId",
+        "seller",
+        "data_extracao"
+    ]
+
+    df = df[colunas_finais] if not df.empty else pd.DataFrame(columns=colunas_finais)
+
     df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
 
-    print(f"CSV de itens gerado: {OUTPUT_PATH} ({len(df)} linhas)")
+    print(f"✅ CSV de itens gerado: {OUTPUT_PATH} ({len(df)} linhas)")
 
 if __name__ == "__main__":
     main()
