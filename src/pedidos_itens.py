@@ -41,7 +41,7 @@ def converter_brasil(data_iso):
 
 def gerar_intervalo():
     agora = agora_brasil()
-    inicio = (agora - timedelta(days=3)).replace(
+    inicio = (agora - timedelta(days=4)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
     fim = agora.replace(
