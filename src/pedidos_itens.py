@@ -52,6 +52,7 @@ def gerar_intervalo():
 def coletar_itens():
     registros = []
     pagina = 1
+    order_ids_processados = set()
 
     inicio, fim = gerar_intervalo()
     i_utc = inicio.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -70,16 +71,23 @@ def coletar_itens():
             break
 
         pedidos = r.json().get("list", [])
-        qtd = len(pedidos)
-
-        if qtd == 0:
+        if not pedidos:
             print(f"✅ Página {pagina} vazia — encerrando.")
             break
+
+        novos_na_pagina = 0
 
         for resumo in tqdm(pedidos, desc=f"Página {pagina}"):
             order_id = resumo.get("orderId")
             if not order_id:
                 continue
+
+            # 🔐 TRAVA DEFINITIVA (VTEX REPETE PEDIDOS)
+            if order_id in order_ids_processados:
+                continue
+
+            order_ids_processados.add(order_id)
+            novos_na_pagina += 1
 
             url_det = f"https://{ACCOUNT}.{ENV}.com.br/api/oms/pvt/orders/{order_id}"
 
@@ -112,9 +120,9 @@ def coletar_itens():
                     "data_extracao": agora_brasil().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
-        # 🔐 REGRA DE PARADA REAL
-        if qtd < PER_PAGE:
-            print(f"✅ Última página atingida ({qtd} registros).")
+        # 🚨 SE NÃO VEIO NENHUM PEDIDO NOVO → PARA
+        if novos_na_pagina == 0:
+            print(f"✅ Nenhum pedido novo na página {pagina}. Encerrando.")
             break
 
         pagina += 1
