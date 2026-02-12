@@ -90,6 +90,7 @@ def coletar_pedidos(data_inicio_utc, data_fim_utc):
 
             # -------- SELLER PRINCIPAL --------
             sellers = pedido.get("sellers", [])
+            pedido["sellerId"] = sellers[0].get("id") if sellers else None
             pedido["sellerName"] = sellers[0].get("name") if sellers else None
 
             # -------- TOTALS NORMALIZADOS --------
@@ -140,6 +141,7 @@ def main():
         "creationDate",
         "value",
         "sellerName",
+        "sellerId",
         "statusDescription",
         "utmSource",
         "utmMedium",
