@@ -34,6 +34,9 @@ jobs:
       - name: Rodar script Geral VTEX
         run: python src/pedidos_gerais.py
 
+      - name: Rodar script Lista Sellers
+        run: python src/lista_sellers.py
+
       - name: Commit CSV
         run: |
           git config user.name "github-actions"
