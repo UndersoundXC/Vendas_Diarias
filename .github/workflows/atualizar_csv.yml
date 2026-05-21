@@ -18,10 +18,10 @@ jobs:
       VTEX_APP_TOKEN: ${{ secrets.VTEX_APP_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524a0ffba40d6180f747cb493ab73f08a4d
         with:
           python-version: '3.11'
 
